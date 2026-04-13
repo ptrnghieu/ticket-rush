@@ -115,21 +115,33 @@ ticketrush/
 
 ## Implementation Status
 
-### ✅ Done
-- [ ] Auth (register, login, JWT)
-- [ ] Event list + search
-- [ ] Event detail + seat map render
-- [ ] Seat lock với DB transaction
-- [ ] Real-time seat update (WebSocket)
-- [ ] Checkout + confirm
-- [ ] Auto-release expired locks (cronjob)
-- [ ] My Tickets + QR code
-- [ ] Admin: tạo sự kiện + cấu hình zones
-- [ ] Admin: real-time dashboard
-- [ ] Admin: thống kê khán giả
-- [ ] Virtual Queue
+### Backend — 100% hoàn thành
 
-> Cập nhật file này sau mỗi feature hoàn thành.
+- [x] Auth: register, login, JWT, bcrypt, role middleware
+- [x] Events CRUD + auto seat generation khi tạo zone
+- [x] Seat lock với `SELECT FOR UPDATE NOWAIT` (race-condition safe)
+- [x] Booking confirm + tạo tickets với QR code
+- [x] Auto-release khoá hết hạn (cronjob mỗi 30 giây)
+- [x] Admin dashboard API: thống kê sold/locked/available + doanh thu theo giờ
+- [x] Admin analytics API: phân bố tuổi, giới tính, top sự kiện
+- [x] Socket.io broadcast realtime khi seat thay đổi trạng thái
+
+### Frontend — 95% hoàn thành
+
+- [x] `index.html` — danh sách sự kiện, tìm kiếm debounce, filter theo trạng thái
+- [x] `login.html` + `register.html` — auth forms, JWT lưu localStorage
+- [x] `event.html` — chi tiết sự kiện, sơ đồ ghế tương tác, WebSocket live update
+- [x] `checkout.html` — countdown timer (tính từ `locked_at`), xác nhận thanh toán
+- [x] `my-tickets.html` — danh sách vé nhóm theo sự kiện, xem QR code fullscreen
+- [x] `admin/dashboard.html` — thống kê realtime, biểu đồ doanh thu (Chart.js), tự động refresh 10s
+- [x] `admin/events.html` — quản lý sự kiện, inline status change, edit modal đầy đủ, xoá có confirm
+- [x] `admin/create-event.html` — tạo sự kiện + zone builder động, preview sơ đồ ghế
+
+### Chưa triển khai
+
+- [ ] Virtual Queue (PRD 3.7) — hàng đợi ảo khi vượt ngưỡng concurrent users
+
+> Tất cả API call đi qua `js/api.js`. Không có page reload trong luồng chính.
 
 ---
 
