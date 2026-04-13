@@ -5,7 +5,8 @@ const { Server: SocketIOServer } = require('socket.io');
 const app = require('./app');
 const pool = require('./config/db');
 const { connectRedis } = require('./config/redis');
-const seatEvents = require('./socket/seatEvents');
+const seatEvents           = require('./socket/seatEvents');
+const releaseExpiredSeatsJob = require('./jobs/releaseExpiredSeats.job');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 
@@ -54,6 +55,9 @@ async function start() {
     httpServer.listen(PORT, () => {
       console.log(`TicketRush backend running on http://localhost:${PORT}`);
     });
+
+    // Start background jobs after the server is listening
+    releaseExpiredSeatsJob.start();
   } catch (err) {
     console.error('Failed to start server:', err.message);
     process.exit(1);

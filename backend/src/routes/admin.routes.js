@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const eventController = require('../controllers/event.controller');
+const adminController = require('../controllers/admin.controller');
 const { verifyToken }  = require('../middleware/auth.middleware');
 const { requireRole }  = require('../middleware/role.middleware');
 
@@ -22,16 +23,12 @@ router.put('/events/:id', eventController.updateEvent);
 // DELETE /api/admin/events/:id
 router.delete('/events/:id', eventController.deleteEvent);
 
-// ── Dashboard & Analytics (stubs — implemented later) ─────────────────────────
+// ── Dashboard & Analytics ─────────────────────────────────────────────────────
 
-// GET /api/admin/dashboard/:eventId
-router.get('/dashboard/:eventId', (req, res) => {
-  res.status(501).json({ success: false, error: 'Not implemented' });
-});
+// GET /api/admin/dashboard/:eventId  — real-time seat counts + hourly revenue
+router.get('/dashboard/:eventId', adminController.dashboard);
 
-// GET /api/admin/analytics
-router.get('/analytics', (req, res) => {
-  res.status(501).json({ success: false, error: 'Not implemented' });
-});
+// GET /api/admin/analytics  — age/gender distribution + top events
+router.get('/analytics', adminController.analytics);
 
 module.exports = router;
