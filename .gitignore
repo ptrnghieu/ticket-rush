@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment
+.env
+.env.local
+*.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Docker volumes (local data)
+postgres_data/
+redis_data/
+
+# Claude Code instructions (personal)
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
