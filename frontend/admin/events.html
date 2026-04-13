@@ -57,6 +57,94 @@
       border-radius: 50%;
       animation: spin .6s linear infinite;
     }
+
+    /* ── Edit modal ───────────────────────────────────────────── */
+    .edit-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13,13,16,.82);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 200;
+      align-items: flex-start;
+      justify-content: center;
+      padding: var(--sp-8) var(--sp-4);
+      overflow-y: auto;
+    }
+    .edit-modal-backdrop.visible { display: flex; }
+
+    .edit-modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-8);
+      width: 100%;
+      max-width: 600px;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+    }
+    .edit-modal__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+    .edit-modal__title {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .edit-modal__close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 1.125rem;
+      cursor: pointer;
+      transition: all var(--t);
+      flex-shrink: 0;
+    }
+    .edit-modal__close:hover {
+      background: var(--bg-hover);
+      color: var(--text-1);
+    }
+    .edit-modal__form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+    .edit-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+    .edit-form-grid .full { grid-column: 1 / -1; }
+    .edit-modal__actions {
+      display: flex;
+      gap: var(--sp-3);
+      justify-content: flex-end;
+      padding-top: var(--sp-4);
+      border-top: 1px solid var(--border);
+      margin-top: var(--sp-2);
+    }
+    .edit-field-error {
+      font-size: var(--text-xs);
+      color: var(--error);
+      margin-top: var(--sp-1);
+    }
+
+    @media (max-width: 600px) {
+      .edit-form-grid { grid-template-columns: 1fr; }
+      .edit-form-grid .full { grid-column: 1; }
+      .edit-modal { padding: var(--sp-6); }
+    }
   </style>
 </head>
 <body>
@@ -67,7 +155,6 @@
     <a href="../index.html" class="nav-logo">Ticket<span style="color:var(--text-1)">Rush</span></a>
     <nav class="nav-links" aria-label="Main navigation">
       <a href="events.html" class="nav-link" aria-current="page">Sự kiện</a>
-      <a href="dashboard.html" class="nav-link">Dashboard</a>
       <a href="../index.html" class="nav-link">Trang chủ</a>
       <div id="nav-auth" style="display:contents"></div>
     </nav>
@@ -82,7 +169,7 @@
     <div class="admin-header">
       <div>
         <h1 class="admin-title">Quản lý sự kiện</h1>
-        <p class="admin-sub">Xem, chỉnh sửa trạng thái và xoá sự kiện.</p>
+        <p class="admin-sub">Xem, chỉnh sửa và xoá sự kiện.</p>
       </div>
       <a href="create-event.html" class="btn btn-primary">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -118,6 +205,76 @@
 
   </div>
 </main>
+
+<!-- ── Edit modal ───────────────────────────────────────────────────── -->
+<div class="edit-modal-backdrop" id="edit-modal" role="dialog"
+     aria-modal="true" aria-labelledby="edit-modal-title">
+  <div class="edit-modal">
+
+    <div class="edit-modal__header">
+      <h2 class="edit-modal__title" id="edit-modal-title">Chỉnh sửa sự kiện</h2>
+      <button class="edit-modal__close" id="edit-close-btn" aria-label="Đóng">✕</button>
+    </div>
+
+    <div class="edit-modal__form">
+      <div class="edit-form-grid">
+
+        <!-- Title -->
+        <div class="field full">
+          <label class="label" for="edit-title">Tên sự kiện <span style="color:var(--error)">*</span></label>
+          <input type="text" id="edit-title" class="input" maxlength="255" autocomplete="off">
+          <span class="edit-field-error" id="edit-err-title" aria-live="polite"></span>
+        </div>
+
+        <!-- Venue -->
+        <div class="field">
+          <label class="label" for="edit-venue">Địa điểm <span style="color:var(--error)">*</span></label>
+          <input type="text" id="edit-venue" class="input" maxlength="255" autocomplete="off">
+          <span class="edit-field-error" id="edit-err-venue" aria-live="polite"></span>
+        </div>
+
+        <!-- Date -->
+        <div class="field">
+          <label class="label" for="edit-date">Ngày &amp; giờ <span style="color:var(--error)">*</span></label>
+          <input type="datetime-local" id="edit-date" class="input">
+          <span class="edit-field-error" id="edit-err-date" aria-live="polite"></span>
+        </div>
+
+        <!-- Status -->
+        <div class="field">
+          <label class="label" for="edit-status">Trạng thái</label>
+          <select id="edit-status" class="input select">
+            <option value="draft">Nháp</option>
+            <option value="on_sale">Đang mở bán</option>
+            <option value="ended">Đã kết thúc</option>
+          </select>
+        </div>
+
+        <!-- Banner URL -->
+        <div class="field full">
+          <label class="label" for="edit-banner">URL ảnh banner</label>
+          <input type="url" id="edit-banner" class="input" placeholder="https://..." autocomplete="off">
+          <span class="edit-field-error" id="edit-err-banner" aria-live="polite"></span>
+        </div>
+
+        <!-- Description -->
+        <div class="field full">
+          <label class="label" for="edit-desc">Mô tả</label>
+          <textarea id="edit-desc" class="input" rows="4" style="resize:vertical"></textarea>
+        </div>
+
+      </div>
+
+      <div class="edit-modal__actions">
+        <button type="button" class="btn btn-ghost" id="edit-cancel-btn">Huỷ</button>
+        <button type="button" class="btn btn-primary" id="edit-save-btn">Lưu thay đổi</button>
+      </div>
+      <span class="edit-field-error" id="edit-err-global" aria-live="polite"
+            style="text-align:right;display:block"></span>
+    </div>
+
+  </div>
+</div>
 
 <!-- ── Delete confirm modal ─────────────────────────────────────────── -->
 <div class="modal-backdrop" id="delete-modal" role="dialog"
@@ -158,16 +315,29 @@ renderNavAuth(document.getElementById('nav-auth'));
 if (!requireAdmin()) throw new Error('redirect');
 
 // ── DOM refs ────────────────────────────────────────────────────────
-const tbody       = document.getElementById('events-tbody');
-const deleteModal = document.getElementById('delete-modal');
-const deleteNameEl = document.getElementById('delete-event-name');
+const tbody            = document.getElementById('events-tbody');
+
+const editModal        = document.getElementById('edit-modal');
+const editCloseBtn     = document.getElementById('edit-close-btn');
+const editCancelBtn    = document.getElementById('edit-cancel-btn');
+const editSaveBtn      = document.getElementById('edit-save-btn');
+const editTitleEl      = document.getElementById('edit-title');
+const editVenueEl      = document.getElementById('edit-venue');
+const editDateEl       = document.getElementById('edit-date');
+const editStatusEl     = document.getElementById('edit-status');
+const editBannerEl     = document.getElementById('edit-banner');
+const editDescEl       = document.getElementById('edit-desc');
+
+const deleteModal      = document.getElementById('delete-modal');
+const deleteNameEl     = document.getElementById('delete-event-name');
 const deleteCancelBtn  = document.getElementById('delete-cancel-btn');
 const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
 
 // ── State ────────────────────────────────────────────────────────────
+let allEvents         = [];
+let editingId         = null;
 let pendingDeleteId   = null;
 let pendingDeleteName = '';
-let allEvents         = [];
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function escHtml(s) {
@@ -181,15 +351,32 @@ function fmtDate(iso) {
   });
 }
 
-/** Map DB status to badge HTML. */
-function statusBadge(status) {
-  const map = {
-    draft:   { cls: 'badge-neutral', label: 'Nháp' },
-    on_sale: { cls: 'badge-success badge-dot', label: 'Đang mở bán' },
-    ended:   { cls: 'badge-neutral', label: 'Đã kết thúc' },
-  };
-  const { cls, label } = map[status] ?? { cls: 'badge-neutral', label: status };
-  return `<span class="badge ${cls}">${label}</span>`;
+/**
+ * Convert an ISO/DB timestamp to the value format expected by
+ * <input type="datetime-local">: "YYYY-MM-DDTHH:mm" in local time.
+ * @param {string|Date} iso
+ * @returns {string}
+ */
+function toDatetimeLocal(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function isValidUrl(str) {
+  if (!str) return true; // optional field
+  try { new URL(str); return true; } catch { return false; }
+}
+
+function setEditError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = msg;
+}
+function clearEditErrors() {
+  ['edit-err-title','edit-err-venue','edit-err-date','edit-err-banner','edit-err-global']
+    .forEach(id => setEditError(id, ''));
 }
 
 // ── Render table ──────────────────────────────────────────────────────
@@ -219,6 +406,16 @@ function renderTable(events) {
       </td>
       <td>
         <div class="td-actions">
+          <button class="btn btn-ghost btn-sm edit-btn"
+                  data-id="${event.id}"
+                  aria-label="Chỉnh sửa sự kiện ${escHtml(event.title)}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Sửa
+          </button>
           <a href="dashboard.html" class="btn btn-ghost btn-sm"
              onclick="sessionStorage.setItem('dash_event_id','${event.id}')"
              title="Xem dashboard sự kiện này">
@@ -246,12 +443,17 @@ function renderTable(events) {
       </td>
     </tr>`).join('');
 
-  // Attach status change handlers
+  // Status change handlers
   tbody.querySelectorAll('.status-select').forEach(sel => {
     sel.addEventListener('change', () => updateStatus(Number(sel.dataset.id), sel.value, sel));
   });
 
-  // Attach delete handlers
+  // Edit button handlers
+  tbody.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditModal(Number(btn.dataset.id)));
+  });
+
+  // Delete button handlers
   tbody.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', () => openDeleteModal(Number(btn.dataset.id), btn.dataset.name));
   });
@@ -274,10 +476,9 @@ async function loadEvents() {
   }
 }
 
-// ── Update status (inline) ────────────────────────────────────────────
+// ── Inline status update ──────────────────────────────────────────────
 /**
- * PUT /api/admin/events/:id with the new status.
- * Shows a saving indicator next to the select while in flight.
+ * PUT /api/admin/events/:id with just the new status.
  * @param {number} id
  * @param {string} status
  * @param {HTMLSelectElement} selectEl
@@ -295,12 +496,10 @@ async function updateStatus(id, status, selectEl) {
 
   try {
     await api.put(`/api/admin/events/${id}`, { status });
-    // Update local state
     const ev = allEvents.find(e => e.id === id);
     if (ev) ev.status = status;
     showToast('Đã cập nhật trạng thái.', 'success');
   } catch (err) {
-    // Revert select to previous value
     const ev = allEvents.find(e => e.id === id);
     if (ev) selectEl.value = ev.status;
     showToast(err.message || 'Cập nhật thất bại.', 'error');
@@ -309,6 +508,111 @@ async function updateStatus(id, status, selectEl) {
     indicator.remove();
   }
 }
+
+// ── Edit modal ────────────────────────────────────────────────────────
+
+/**
+ * Open the edit modal pre-filled with the given event's data.
+ * @param {number} id
+ */
+function openEditModal(id) {
+  const ev = allEvents.find(e => e.id === id);
+  if (!ev) return;
+
+  editingId = id;
+  clearEditErrors();
+
+  editTitleEl.value  = ev.title ?? '';
+  editVenueEl.value  = ev.venue ?? '';
+  editDateEl.value   = toDatetimeLocal(ev.event_date ?? ev.eventDate);
+  editStatusEl.value = ev.status ?? 'draft';
+  editBannerEl.value = ev.banner_url ?? ev.bannerUrl ?? '';
+  editDescEl.value   = ev.description ?? '';
+
+  editModal.classList.add('visible');
+  editTitleEl.focus();
+}
+
+function closeEditModal() {
+  editingId = null;
+  editModal.classList.remove('visible');
+  clearEditErrors();
+}
+
+// Close triggers
+editCloseBtn.addEventListener('click', closeEditModal);
+editCancelBtn.addEventListener('click', closeEditModal);
+editModal.addEventListener('click', e => {
+  if (e.target === editModal) closeEditModal();
+});
+
+// ── Save edit ─────────────────────────────────────────────────────────
+
+/**
+ * Validate form, PUT /api/admin/events/:id, update allEvents in-place,
+ * re-render table row without full reload.
+ */
+editSaveBtn.addEventListener('click', async () => {
+  if (!editingId) return;
+  clearEditErrors();
+
+  const title       = editTitleEl.value.trim();
+  const venue       = editVenueEl.value.trim();
+  const dateVal     = editDateEl.value;
+  const status      = editStatusEl.value;
+  const bannerUrl   = editBannerEl.value.trim();
+  const description = editDescEl.value.trim();
+
+  // Client-side validation
+  let valid = true;
+  if (!title)   { setEditError('edit-err-title', 'Tên sự kiện không được để trống.');  valid = false; }
+  if (!venue)   { setEditError('edit-err-venue', 'Địa điểm không được để trống.');     valid = false; }
+  if (!dateVal) { setEditError('edit-err-date',  'Vui lòng chọn ngày giờ sự kiện.');   valid = false; }
+  if (!isValidUrl(bannerUrl)) { setEditError('edit-err-banner', 'URL ảnh không hợp lệ.'); valid = false; }
+  if (!valid) return;
+
+  editSaveBtn.classList.add('btn-loading');
+  editSaveBtn.disabled = true;
+
+  try {
+    const updated = await api.put(`/api/admin/events/${editingId}`, {
+      title,
+      venue,
+      eventDate:   new Date(dateVal).toISOString(),
+      status,
+      bannerUrl:   bannerUrl || null,
+      description: description || null,
+    });
+
+    // Merge returned fields back into allEvents so the table stays consistent.
+    // The PUT response may return the updated row; fall back to merging our
+    // local values if the backend returns a sparse object.
+    const idx = allEvents.findIndex(e => e.id === editingId);
+    if (idx !== -1) {
+      allEvents[idx] = {
+        ...allEvents[idx],
+        title,
+        venue,
+        event_date:  new Date(dateVal).toISOString(),
+        status,
+        banner_url:  bannerUrl || null,
+        description: description || null,
+        // also spread whatever the backend returned (may include updated_at etc.)
+        ...(updated && typeof updated === 'object' ? updated : {}),
+      };
+    }
+
+    renderTable(allEvents);
+    closeEditModal();
+    showToast('Đã lưu thay đổi.', 'success');
+  } catch (err) {
+    setEditError('edit-err-global', err.message || 'Lưu thất bại. Vui lòng thử lại.');
+    showToast(err.message || 'Lưu thất bại.', 'error');
+  } finally {
+    editSaveBtn.classList.remove('btn-loading');
+    editSaveBtn.disabled = false;
+  }
+});
 
 // ── Delete modal ──────────────────────────────────────────────────────
 function openDeleteModal(id, name) {
@@ -326,9 +630,6 @@ function closeDeleteModal() {
 deleteCancelBtn.addEventListener('click', closeDeleteModal);
 deleteModal.addEventListener('click', e => {
   if (e.target === deleteModal) closeDeleteModal();
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDeleteModal();
 });
 
 deleteConfirmBtn.addEventListener('click', async () => {
@@ -349,6 +650,13 @@ deleteConfirmBtn.addEventListener('click', async () => {
     deleteConfirmBtn.classList.remove('btn-loading');
     deleteConfirmBtn.disabled = false;
   }
+});
+
+// ── Global Escape key ─────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (editModal.classList.contains('visible'))   { closeEditModal();   return; }
+  if (deleteModal.classList.contains('visible')) { closeDeleteModal(); return; }
 });
 
 // ── Toast ─────────────────────────────────────────────────────────────

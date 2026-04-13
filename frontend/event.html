@@ -386,7 +386,7 @@ async function loadEvent() {
     </div>`;
 
   try {
-    const event = await api.get(`/api/events/${eventId}`);
+    const { event } = await api.get(`/api/events/${eventId}`);
     document.title = `${event.title} — TicketRush`;
     renderEventHeader(event);
     renderEventBanner(event);

@@ -226,7 +226,6 @@
     <a href="../index.html" class="nav-logo">Ticket<span style="color:var(--text-1)">Rush</span></a>
     <nav class="nav-links" aria-label="Main navigation">
       <a href="events.html" class="nav-link">Sự kiện</a>
-      <a href="dashboard.html" class="nav-link" aria-current="page">Dashboard</a>
       <a href="../index.html" class="nav-link">Trang chủ</a>
       <div id="nav-auth" style="display:contents"></div>
     </nav>
@@ -575,6 +574,16 @@ function showToast(message, type = 'info', duration = 4000) {
 
 // ── Boot ──────────────────────────────────────────────────────────────
 await loadEventList();
+
+// Pre-select event if navigated from events.html "Stats" button
+const preselect = sessionStorage.getItem('dash_event_id');
+if (preselect) {
+  sessionStorage.removeItem('dash_event_id');
+  if ([...eventSelect.options].some(o => o.value === preselect)) {
+    eventSelect.value = preselect;
+    eventSelect.dispatchEvent(new Event('change'));
+  }
+}
 
 // Clean up timer on page unload
 window.addEventListener('pagehide', stopAutoRefresh);

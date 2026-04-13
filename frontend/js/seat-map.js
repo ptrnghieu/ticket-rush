@@ -187,8 +187,8 @@ function buildZoneHtml(zone) {
   // Sort columns within each row numerically where possible
   const rowsHtml = Array.from(rowMap.entries()).map(([rowLabel, seats]) => {
     seats.sort((a, b) => {
-      const na = Number(a.col_label), nb = Number(b.col_label);
-      return (isNaN(na) || isNaN(nb)) ? a.col_label.localeCompare(b.col_label) : na - nb;
+      const na = Number(a.col_number), nb = Number(b.col_number);
+      return (isNaN(na) || isNaN(nb)) ? String(a.col_number).localeCompare(String(b.col_number)) : na - nb;
     });
     const seatsHtml = seats.map(buildSeatHtml).join('');
     return `<div class="seat-row">
@@ -213,7 +213,7 @@ function buildZoneHtml(zone) {
 
 function buildSeatHtml(seat) {
   const status = seat.status;
-  const label = `${seat.row_label}${seat.col_label}`;
+  const label = `${seat.row_label}${seat.col_number}`;
   const isInteractive = status === 'available';
   return `<div
     class="seat seat--${status}"

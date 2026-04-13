@@ -176,7 +176,6 @@
     <a href="../index.html" class="nav-logo">Ticket<span style="color:var(--text-1)">Rush</span></a>
     <nav class="nav-links" aria-label="Main navigation">
       <a href="events.html" class="nav-link">Sự kiện</a>
-      <a href="dashboard.html" class="nav-link">Dashboard</a>
       <a href="../index.html" class="nav-link">Trang chủ</a>
       <div id="nav-auth" style="display:contents"></div>
     </nav>
@@ -549,9 +548,9 @@ function collectPayload() {
   return {
     title,
     description: desc || null,
-    banner_url:  bannerUrl || null,
+    bannerUrl:   bannerUrl || null,
     venue,
-    event_date:  new Date(dateVal).toISOString(),
+    eventDate:   new Date(dateVal).toISOString(),
     status,
     zones,
   };
