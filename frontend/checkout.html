@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xác nhận thanh toán — TicketRush</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    /* ── Page layout ─────────────────────────────────────────────── */
+    .checkout-page {
+      padding: var(--sp-8) 0 var(--sp-16);
+    }
+    .checkout-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: var(--sp-8);
+      align-items: start;
+    }
+    @media (max-width: 860px) {
+      .checkout-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ── Breadcrumb ──────────────────────────────────────────────── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      font-size: var(--text-sm);
+      color: var(--text-3);
+      margin-bottom: var(--sp-6);
+    }
+    .breadcrumb a { color: var(--text-2); transition: color var(--t); }
+    .breadcrumb a:hover { color: var(--accent); }
+    .breadcrumb-sep { color: var(--text-3); }
+
+    /* ── Section card ─────────────────────────────────────────────── */
+    .checkout-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
+    }
+    .checkout-card + .checkout-card { margin-top: var(--sp-4); }
+    .checkout-card__title {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: var(--sp-4);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+    .checkout-card__title-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-dim);
+      border-radius: var(--radius-sm);
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ── Seats table ─────────────────────────────────────────────── */
+    .seats-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .seats-table th {
+      text-align: left;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-3);
+      padding: var(--sp-2) var(--sp-3);
+      border-bottom: 1px solid var(--border);
+    }
+    .seats-table td {
+      padding: var(--sp-3);
+      font-size: var(--text-sm);
+      color: var(--text-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .seats-table tr:last-child td { border-bottom: none; }
+    .seat-label-cell { font-weight: 600; color: var(--text-1); }
+    .price-cell { color: var(--accent); font-weight: 600; text-align: right; }
+
+    /* ── Summary sidebar ─────────────────────────────────────────── */
+    .summary-card {
+      position: sticky;
+      top: 80px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+    .summary-title {
+      font-size: var(--text-base);
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: var(--text-sm);
+      color: var(--text-2);
+    }
+    .summary-row.total {
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--border);
+    }
+    .summary-row.total .label { font-size: var(--text-base); color: var(--text-1); font-weight: 600; }
+    .summary-row.total .amount { font-size: var(--text-2xl); font-weight: 800; color: var(--accent); }
+    .summary-hint {
+      font-size: var(--text-xs);
+      color: var(--text-3);
+      text-align: center;
+    }
+
+    /* ── Countdown ───────────────────────────────────────────────── */
+    .countdown-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-5) var(--sp-6);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+    .countdown-icon {
+      flex-shrink: 0;
+      color: var(--accent);
+    }
+    .countdown-text {
+      flex: 1;
+    }
+    .countdown-label {
+      font-size: var(--text-xs);
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .countdown-value {
+      font-size: var(--text-2xl);
+      font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    .countdown-value.urgent {
+      color: var(--error);
+      animation: pulse-urgent 1s ease infinite;
+    }
+    @keyframes pulse-urgent {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .countdown-sub {
+      font-size: var(--text-xs);
+      color: var(--text-3);
+    }
+
+    /* ── Confirm button ──────────────────────────────────────────── */
+    .confirm-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-2);
+    }
+
+    /* ── Event info row ──────────────────────────────────────────── */
+    .event-info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-3);
+      color: var(--text-2);
+      font-size: var(--text-sm);
+    }
+    .event-info-row svg { flex-shrink: 0; margin-top: 2px; opacity: 0.7; }
+    .event-info-row strong { display: block; color: var(--text-1); font-weight: 600; }
+
+    /* ── Loading state ───────────────────────────────────────────── */
+    .checkout-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+
+    /* ── Expired overlay (modal) ─────────────────────────────────── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13,13,16,.82);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .modal-backdrop.visible { display: flex; }
+    .modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-8);
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal-icon { font-size: 3rem; margin-bottom: var(--sp-4); }
+    .modal-title {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: var(--sp-2);
+    }
+    .modal-body {
+      font-size: var(--text-sm);
+      color: var(--text-2);
+      margin-bottom: var(--sp-6);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ──────────────────────────────────────────────── -->
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo">Ticket<span style="color:var(--text-1)">Rush</span></a>
+    <nav class="nav-links">
+      <a href="index.html" class="nav-link">Sự kiện</a>
+      <div id="nav-auth" style="display:contents"></div>
+    </nav>
+  </div>
+</header>
+
+<!-- ── Main ─────────────────────────────────────────────────────── -->
+<main class="checkout-page">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="index.html">Trang chủ</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="#" id="event-link">Sự kiện</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Xác nhận đặt vé</span>
+    </nav>
+
+    <!-- Countdown timer -->
+    <div class="countdown-card" id="countdown-card" aria-label="Thời gian còn lại để xác nhận">
+      <div class="countdown-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="countdown-text">
+        <p class="countdown-label">Thời gian giữ chỗ còn lại</p>
+        <p class="countdown-value" id="countdown-value" aria-live="polite">--:--</p>
+        <p class="countdown-sub">Ghế sẽ tự động được giải phóng khi hết giờ.</p>
+      </div>
+    </div>
+
+    <!-- Main content skeleton / loaded -->
+    <div id="checkout-content">
+      <div class="checkout-skeleton">
+        <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        <div class="skeleton" style="height:140px;border-radius:var(--radius-lg)"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ── Expired modal ────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="expired-modal" role="dialog"
+     aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal-icon">⏰</div>
+    <h2 class="modal-title" id="modal-title">Hết thời gian giữ chỗ</h2>
+    <p class="modal-body">
+      Thời gian giữ chỗ của bạn đã hết. Các ghế đã được trả lại.
+      Bạn có thể quay lại trang sự kiện để chọn ghế khác.
+    </p>
+    <button class="btn btn-primary btn-full" id="modal-back-btn">
+      Quay lại chọn ghế
+    </button>
+  </div>
+</div>
+
+<!-- ── Toast ────────────────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- ── Scripts ──────────────────────────────────────────────────── -->
+<script type="module">
+import { api }                        from './js/api.js';
+import { requireAuth, renderNavAuth } from './js/auth.js';
+
+// ── Auth guard ──────────────────────────────────────────────────
+renderNavAuth(document.getElementById('nav-auth'));
+if (!requireAuth()) throw new Error('redirect');
+
+// ── Read booking ID from URL ────────────────────────────────────
+const bookingId = new URLSearchParams(window.location.search).get('bookingId');
+if (!bookingId) {
+  showToast('Không tìm thấy thông tin đặt vé.', 'error');
+  setTimeout(() => window.location.replace('index.html'), 1500);
+  throw new Error('no bookingId');
+}
+
+// ── DOM refs ────────────────────────────────────────────────────
+const contentEl       = document.getElementById('checkout-content');
+const countdownVal    = document.getElementById('countdown-value');
+const eventLink       = document.getElementById('event-link');
+const expiredModal    = document.getElementById('expired-modal');
+const modalBackBtn    = document.getElementById('modal-back-btn');
+
+// ── State ───────────────────────────────────────────────────────
+let booking       = null;
+let countdownTimer = null;
+
+// ── Helpers ─────────────────────────────────────────────────────
+function fmtVND(n) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency', currency: 'VND', maximumFractionDigits: 0,
+  }).format(n);
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('vi-VN', {
+    weekday: 'short', day: '2-digit', month: '2-digit',
+    year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Countdown ────────────────────────────────────────────────────
+/**
+ * Start a countdown from now until expiresAt.
+ * When the timer hits 0, show the expired modal.
+ * @param {string} expiresAt - ISO date string from the API
+ */
+function startCountdown(expiresAt) {
+  const expireMs = new Date(expiresAt).getTime();
+
+  function tick() {
+    const remaining = expireMs - Date.now();
+
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      countdownVal.textContent = '00:00';
+      countdownVal.classList.add('urgent');
+      onExpired();
+      return;
+    }
+
+    const totalSec = Math.ceil(remaining / 1000);
+    const mins = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const secs = String(totalSec % 60).padStart(2, '0');
+    countdownVal.textContent = `${mins}:${secs}`;
+
+    // Turn red at ≤ 2 minutes
+    countdownVal.classList.toggle('urgent', totalSec <= 120);
+  }
+
+  tick();
+  countdownTimer = setInterval(tick, 500);
+}
+
+function onExpired() {
+  expiredModal.classList.add('visible');
+  // Disable confirm button
+  document.getElementById('confirm-btn')?.setAttribute('disabled', 'true');
+}
+
+// ── Modal back button ────────────────────────────────────────────
+modalBackBtn.addEventListener('click', () => {
+  if (booking?.eventId) {
+    window.location.replace(`event.html?id=${booking.eventId}`);
+  } else {
+    window.location.replace('index.html');
+  }
+});
+
+// ── Load booking ─────────────────────────────────────────────────
+async function loadBooking() {
+  try {
+    booking = await api.get(`/api/bookings/${bookingId}`);
+
+    // Update breadcrumb link
+    if (booking.eventId) {
+      eventLink.href = `event.html?id=${booking.eventId}`;
+      eventLink.textContent = booking.eventTitle ?? 'Sự kiện';
+    }
+
+    // Start countdown from expiresAt (NOT from page load)
+    if (booking.expiresAt) {
+      startCountdown(booking.expiresAt);
+    }
+
+    // Render content
+    renderCheckout(booking);
+  } catch (err) {
+    contentEl.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <h3 class="empty-title">Không tải được thông tin đặt vé</h3>
+      <p>${escHtml(err.message)}</p>
+      <a href="index.html" class="btn btn-ghost btn-sm mt-4">Về trang chủ</a>
+    </div>`;
+    showToast(err.message, 'error');
+  }
+}
+
+function renderCheckout(b) {
+  const seatsRows = (b.seats ?? []).map(seat => `
+    <tr>
+      <td class="seat-label-cell">${escHtml(seat.label ?? `Ghế ${seat.id}`)}</td>
+      <td>${escHtml(seat.zoneName ?? '—')}</td>
+      <td class="price-cell">${fmtVND(seat.price ?? 0)}</td>
+    </tr>`).join('');
+
+  const seatCount = (b.seats ?? []).length;
+
+  contentEl.innerHTML = `
+    <div class="checkout-layout">
+
+      <!-- Left column -->
+      <div>
+
+        <!-- Event info -->
+        <div class="checkout-card">
+          <h2 class="checkout-card__title">
+            <span class="checkout-card__title-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </span>
+            Thông tin sự kiện
+          </h2>
+          ${b.eventTitle ? `<div class="event-info-row" style="margin-bottom:var(--sp-3)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <div>
+              <strong>${escHtml(b.eventTitle)}</strong>
+            </div>
+          </div>` : ''}
+          ${b.eventDate ? `<div class="event-info-row" style="margin-bottom:var(--sp-3)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <div>${escHtml(fmtDate(b.eventDate))}</div>
+          </div>` : ''}
+          ${b.venue ? `<div class="event-info-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <div>${escHtml(b.venue)}</div>
+          </div>` : ''}
+        </div>
+
+        <!-- Seats list -->
+        <div class="checkout-card" style="margin-top:var(--sp-4)">
+          <h2 class="checkout-card__title">
+            <span class="checkout-card__title-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+              </svg>
+            </span>
+            Ghế đã chọn (${seatCount})
+          </h2>
+          <table class="seats-table" aria-label="Danh sách ghế đã chọn">
+            <thead>
+              <tr>
+                <th>Ghế</th>
+                <th>Khu vực</th>
+                <th style="text-align:right">Giá</th>
+              </tr>
+            </thead>
+            <tbody>${seatsRows}</tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- Right column: summary + confirm -->
+      <aside>
+        <div class="summary-card">
+          <p class="summary-title">Tóm tắt đơn hàng</p>
+
+          <div class="summary-row">
+            <span>${seatCount} ghế</span>
+            <span>${fmtVND(b.totalPrice ?? 0)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Phí dịch vụ</span>
+            <span>Miễn phí</span>
+          </div>
+
+          <div class="summary-row total">
+            <span class="label">Tổng thanh toán</span>
+            <span class="amount">${fmtVND(b.totalPrice ?? 0)}</span>
+          </div>
+
+          <div class="confirm-btn-wrap">
+            <button
+              class="btn btn-primary btn-full btn-lg"
+              id="confirm-btn"
+              aria-label="Xác nhận thanh toán và hoàn tất đặt vé"
+            >
+              XÁC NHẬN THANH TOÁN
+            </button>
+            <a
+              href="event.html?id=${b.eventId}"
+              class="btn btn-ghost btn-full"
+              id="cancel-btn"
+            >
+              Huỷ &amp; chọn lại
+            </a>
+          </div>
+
+          <p class="summary-hint">
+            Bằng cách xác nhận, bạn đồng ý với điều khoản sử dụng của TicketRush.
+          </p>
+        </div>
+      </aside>
+
+    </div>`;
+
+  // Attach confirm handler after rendering
+  document.getElementById('confirm-btn').addEventListener('click', confirmBooking);
+}
+
+// ── Confirm booking ──────────────────────────────────────────────
+async function confirmBooking() {
+  const confirmBtn = document.getElementById('confirm-btn');
+  confirmBtn.classList.add('btn-loading');
+  confirmBtn.disabled = true;
+
+  try {
+    await api.post(`/api/bookings/${bookingId}/confirm`, {});
+
+    clearInterval(countdownTimer);
+    showToast('Đặt vé thành công!', 'success');
+    setTimeout(() => window.location.replace('my-tickets.html'), 800);
+  } catch (err) {
+    showToast(err.message || 'Xác nhận thất bại. Vui lòng thử lại.', 'error');
+    confirmBtn.classList.remove('btn-loading');
+    confirmBtn.disabled = false;
+
+    // If the booking already expired, show the expired modal
+    if (err.status === 410 || err.status === 404 || err.message?.includes('hết')) {
+      onExpired();
+    }
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────
+await loadBooking();
+
+// ── Toast helper ─────────────────────────────────────────────────
+function showToast(message, type = 'info', duration = 4000) {
+  const container = document.getElementById('toast-container');
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `
+    <span class="toast-icon" aria-hidden="true">${icons[type] ?? 'ℹ'}</span>
+    <span>${escHtml(message)}</span>`;
+  container.appendChild(el);
+  const dismiss = () => {
+    el.classList.add('toast-out');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  setTimeout(dismiss, duration);
+  el.addEventListener('click', dismiss);
+}
+</script>
+
+</body>
+</html>
