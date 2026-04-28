@@ -7,6 +7,7 @@ Covers:
   - Section creation + seat grid generation
   - Real-time dashboard (occupancy + revenue)
   - Audience analytics (age, gender breakdown)
+  - Queue mode activation / deactivation
 """
 
 from typing import List
@@ -291,3 +292,58 @@ def audience_analytics(
         gender_breakdown=gender_breakdown,
         age_groups=age_groups,
     )
+
+
+# ── Queue Mode Management ─────────────────────────────────────────────────────
+
+@router.post(
+    "/events/{event_id}/queue/activate",
+    summary="Enable virtual queue mode for an event (high-demand flash sale)",
+)
+async def activate_queue(
+    event_id: int,
+    _: User = Depends(require_admin),
+):
+    """
+    Activates queue mode. All subsequent join requests are placed in the
+    Redis waiting room and admitted in batches of QUEUE_BATCH_SIZE every 30s.
+    """
+    from app.core.redis_client import async_redis
+    from app.services.queue import RedisQueueService
+
+    await RedisQueueService(async_redis).activate(event_id)
+    return {"message": f"Queue activated for event {event_id}"}
+
+
+@router.post(
+    "/events/{event_id}/queue/deactivate",
+    summary="Disable virtual queue mode (direct seat access restored)",
+)
+async def deactivate_queue(
+    event_id: int,
+    _: User = Depends(require_admin),
+):
+    from app.core.redis_client import async_redis
+    from app.services.queue import RedisQueueService
+
+    await RedisQueueService(async_redis).deactivate(event_id)
+    return {"message": f"Queue deactivated for event {event_id}"}
+
+
+@router.get(
+    "/events/{event_id}/queue/status",
+    summary="Get queue statistics for an event",
+)
+async def queue_stats(
+    event_id: int,
+    _: User = Depends(require_admin),
+):
+    from app.core.redis_client import async_redis
+    from app.services.queue import RedisQueueService
+
+    svc = RedisQueueService(async_redis)
+    return {
+        "event_id": event_id,
+        "queue_active": await svc.is_active(event_id),
+        "waiting_count": await svc.get_queue_size(event_id),
+    }

@@ -1,14 +1,10 @@
 """
-Synchronous job implementations.
+Synchronous job implementations (run in asyncio.to_thread — never block event loop).
 
-These functions run in a thread pool via asyncio.to_thread() so they never
-block the FastAPI event loop. Each function:
-  - Opens its own SQLAlchemy session (master)
-  - Does all DB work inside that session
-  - Closes the session in a finally block
-  - Returns data (not side-effects) so the async caller can broadcast via WS
-
-Also exported as Celery tasks (see celery_app.py) for horizontal scale-out.
+Each function:
+  - Opens its own SQLAlchemy + Redis session
+  - Does all work, closes resources in finally
+  - Returns data for the async caller to broadcast via WebSocket
 """
 
 import logging
@@ -16,27 +12,28 @@ from typing import List, Tuple
 
 from app.core.config import settings
 from app.core.database import MasterSessionLocal
+from app.core.redis_client import sync_redis
 from app.models.queue_session import QueueStatus
 from app.models.seat import SeatStatus
 from app.models.ticket_lock import LockStatus
+from app.services.queue import RedisQueueService
 
 logger = logging.getLogger(__name__)
 
-# Type aliases for broadcast payloads
-_ReleasedSeat = Tuple[int, int]   # (event_id, seat_id)
+_ReleasedSeat = Tuple[int, int]    # (event_id, seat_id)
 _AdmittedUser = Tuple[int, int, str]  # (event_id, user_id, token)
 
 
 def sync_release_expired_locks() -> List[_ReleasedSeat]:
     """
-    Find every active TicketLock whose expires_at has passed, then atomically:
-      1. SELECT seat FOR UPDATE  (prevent race with booking or other expiry runs)
+    Sweep for active TicketLocks past their expiry, then for each:
+      1. SELECT seat FOR UPDATE  (prevents race with concurrent booking)
       2. seat.status  → available
       3. lock.status  → expired
       4. COMMIT
 
-    Returns (event_id, seat_id) pairs so the scheduler can broadcast
-    SEAT_STATUS_CHANGED to the correct WS room.
+    Returns (event_id, seat_id) so the scheduler can broadcast
+    SEAT_STATUS_CHANGED to the right WebSocket room.
     """
     db = MasterSessionLocal()
     released: List[_ReleasedSeat] = []
@@ -55,16 +52,12 @@ def sync_release_expired_locks() -> List[_ReleasedSeat]:
 
         for lock in expired_locks:
             try:
-                # Re-acquire row lock before mutating; prevents race with checkout
                 seat = seat_repo.lock_for_update(lock.seat_id)
-
                 if seat and seat.status == SeatStatus.locked:
                     seat.status = SeatStatus.available
-
                 lock.status = LockStatus.expired
                 db.commit()
 
-                # Resolve event_id for WS broadcast
                 if seat:
                     section = db.get(Section, seat.section_id)
                     if section:
@@ -85,11 +78,12 @@ def sync_release_expired_locks() -> List[_ReleasedSeat]:
 
 def sync_admit_queue_batches() -> List[_AdmittedUser]:
     """
-    For every event that has waiting users, admit the next QUEUE_BATCH_SIZE
-    sessions (SELECT … FOR UPDATE SKIP LOCKED prevents double-admission
-    when multiple workers run concurrently).
+    For every event with waiting users:
+      1. Redis ZPOPMIN (atomic batch pop — safe for concurrent workers)
+      2. Mark Redis session status → admitted + set admission key (10-min TTL)
+      3. Mirror to DB: QueueSession.status → admitted
 
-    Returns (event_id, user_id, token) triples for WS broadcasting.
+    Returns (event_id, user_id, token) triples for WebSocket broadcasting.
     """
     db = MasterSessionLocal()
     admitted: List[_AdmittedUser] = []
@@ -97,27 +91,51 @@ def sync_admit_queue_batches() -> List[_AdmittedUser]:
     try:
         from sqlalchemy import select
         from app.models.queue_session import QueueSession
-        from app.repositories.queue_session import QueueSessionRepository
 
-        # Find all events that have at least one waiting user
-        stmt = (
+        # Find events that still have waiting users in Redis
+        # Fall back to DB query when Redis has no data (e.g., after restart)
+        event_ids_stmt = (
             select(QueueSession.event_id)
             .where(QueueSession.status == QueueStatus.waiting)
             .distinct()
         )
-        event_ids = [row[0] for row in db.execute(stmt).all()]
+        event_ids = [row[0] for row in db.execute(event_ids_stmt).all()]
 
         for event_id in event_ids:
-            repo = QueueSessionRepository(db)
-            batch = repo.get_next_waiting_batch(event_id, settings.QUEUE_BATCH_SIZE)
+            # Primary: use Redis atomic ZPOPMIN
+            batch = RedisQueueService.sync_admit_batch(
+                sync_redis, event_id, settings.QUEUE_BATCH_SIZE
+            )
 
-            for session in batch:
-                session.status = QueueStatus.admitted
-                admitted.append((event_id, session.user_id, session.token))
+            if not batch:
+                # Redis queue empty → fall back to DB-only admission
+                from app.repositories.queue_session import QueueSessionRepository
+                repo = QueueSessionRepository(db)
+                db_batch = repo.get_next_waiting_batch(event_id, settings.QUEUE_BATCH_SIZE)
+                for session in db_batch:
+                    session.status = QueueStatus.admitted
+                    admitted.append((event_id, session.user_id, session.token))
+                if db_batch:
+                    db.commit()
+                continue
 
-            if batch:
-                db.commit()
-                logger.info("Admitted %d user(s) for event %s", len(batch), event_id)
+            # Mirror Redis admission to DB
+            user_ids = [uid for uid, _token in batch]
+            from sqlalchemy import update
+            db.execute(
+                update(QueueSession)
+                .where(
+                    QueueSession.event_id == event_id,
+                    QueueSession.user_id.in_(user_ids),
+                )
+                .values(status=QueueStatus.admitted)
+            )
+            db.commit()
+
+            for uid, token in batch:
+                admitted.append((event_id, uid, token))
+
+            logger.info("Admitted %d user(s) for event %s (Redis)", len(batch), event_id)
 
     except Exception as exc:
         db.rollback()
@@ -126,3 +144,35 @@ def sync_admit_queue_batches() -> List[_AdmittedUser]:
         db.close()
 
     return admitted
+
+
+def sync_broadcast_queue_positions() -> List[Tuple[int, int, int]]:
+    """
+    Collect live queue sizes for all active events so the scheduler
+    can send a lightweight QUEUE_BATCH_RELEASED broadcast.
+
+    Returns (event_id, queue_size, admitted_in_last_batch) tuples.
+    Used to send a 'queue_position_updated' message to all waiting clients
+    without iterating over every individual user.
+    """
+    db = MasterSessionLocal()
+    updates: List[Tuple[int, int, int]] = []
+
+    try:
+        from sqlalchemy import select, func
+        from app.models.queue_session import QueueSession
+
+        stmt = (
+            select(QueueSession.event_id, func.count().label("cnt"))
+            .where(QueueSession.status == QueueStatus.waiting)
+            .group_by(QueueSession.event_id)
+        )
+        for row in db.execute(stmt).all():
+            event_id, waiting_count = row
+            redis_size = sync_redis.zcard(f"queue:event:{event_id}:waiting")
+            updates.append((event_id, redis_size or waiting_count, 0))
+
+    finally:
+        db.close()
+
+    return updates

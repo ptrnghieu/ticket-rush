@@ -1,14 +1,18 @@
 """
 Asyncio-based background scheduler.
 
-Each job runs its synchronous DB work in a thread pool via asyncio.to_thread
-(never blocks the event loop), then uses the async WebSocket manager to
-broadcast results to connected clients.
+Jobs:
+  release_expired_locks    every 30s — expire seat holds, broadcast SEAT_STATUS_CHANGED
+  admit_queue_batches      every 30s — Redis ZPOPMIN admission, broadcast QUEUE_ADMITTED
+  broadcast_queue_status   every 60s — broadcast queue size so clients can estimate wait
+
+Each job:
+  1. asyncio.to_thread()  → runs sync DB / Redis work without blocking the event loop
+  2. Broadcasts results   → in the same event loop as the WS manager (direct await)
 
 Lifecycle:
-    tasks = await start_background_workers()   # called from FastAPI lifespan
-    ...
-    stop_background_workers(tasks)             # called on shutdown
+    tasks = await start_background_workers()   # FastAPI lifespan startup
+    stop_background_workers(tasks)             # FastAPI lifespan shutdown
 """
 
 import asyncio
@@ -17,15 +21,14 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
-# How often each job fires (seconds)
 LOCK_EXPIRY_INTERVAL = 30
 QUEUE_ADMISSION_INTERVAL = 30
+QUEUE_STATUS_INTERVAL = 60
 
+
+# ── Job implementations ───────────────────────────────────────────────────────
 
 async def _release_expired_locks_job() -> None:
-    """
-    Thread-pool → DB expiry sweep → async WS broadcast.
-    """
     from app.worker.tasks import sync_release_expired_locks
     from app.websocket.manager import manager
     from app.websocket.events import SEAT_STATUS_CHANGED
@@ -34,18 +37,11 @@ async def _release_expired_locks_job() -> None:
     for event_id, seat_id in released:
         await manager.broadcast_to_event(
             event_id,
-            {
-                "type": SEAT_STATUS_CHANGED,
-                "seat_id": seat_id,
-                "status": "available",
-            },
+            {"type": SEAT_STATUS_CHANGED, "seat_id": seat_id, "status": "available"},
         )
 
 
 async def _admit_queue_batches_job() -> None:
-    """
-    Thread-pool → DB batch admission → async WS broadcast.
-    """
     from app.worker.tasks import sync_admit_queue_batches
     from app.websocket.manager import manager
     from app.websocket.events import QUEUE_ADMITTED
@@ -54,18 +50,34 @@ async def _admit_queue_batches_job() -> None:
     for event_id, user_id, token in admitted:
         await manager.broadcast_to_event(
             event_id,
-            {
-                "type": QUEUE_ADMITTED,
-                "user_id": user_id,
-                "token": token,
-            },
+            {"type": QUEUE_ADMITTED, "user_id": user_id, "token": token},
         )
 
 
+async def _broadcast_queue_status_job() -> None:
+    """
+    Broadcast queue size to every event room so waiting clients can
+    recalculate their estimated wait without a round-trip to the server.
+    Each client receives the same lightweight message; their individual
+    rank is derived client-side as: my_initial_position - (total_admitted).
+    """
+    from app.worker.tasks import sync_broadcast_queue_positions
+    from app.websocket.manager import manager
+    from app.websocket.events import QUEUE_POSITION_UPDATED
+
+    updates = await asyncio.to_thread(sync_broadcast_queue_positions)
+    for event_id, queue_size, _ in updates:
+        await manager.broadcast_to_event(
+            event_id,
+            {"type": QUEUE_POSITION_UPDATED, "queue_size": queue_size},
+        )
+
+
+# ── Scheduler loop ────────────────────────────────────────────────────────────
+
 async def _run_every(interval: float, job, name: str) -> None:
-    """Run `job` every `interval` seconds; log but don't crash on errors."""
-    # Small initial delay so the DB is ready before the first sweep
-    await asyncio.sleep(10)
+    """Run `job` every `interval` seconds; log but never crash on errors."""
+    await asyncio.sleep(10)   # small startup delay — let DB/Redis connect first
     while True:
         try:
             await job()
@@ -77,11 +89,6 @@ async def _run_every(interval: float, job, name: str) -> None:
 
 
 async def start_background_workers() -> List[asyncio.Task]:
-    """
-    Create and return all periodic background tasks.
-    Tasks run inside the FastAPI asyncio event loop, giving them direct
-    access to the in-process WebSocket manager.
-    """
     tasks = [
         asyncio.create_task(
             _run_every(LOCK_EXPIRY_INTERVAL, _release_expired_locks_job, "release_expired_locks"),
@@ -90,6 +97,10 @@ async def start_background_workers() -> List[asyncio.Task]:
         asyncio.create_task(
             _run_every(QUEUE_ADMISSION_INTERVAL, _admit_queue_batches_job, "admit_queue_batches"),
             name="admit_queue_batches",
+        ),
+        asyncio.create_task(
+            _run_every(QUEUE_STATUS_INTERVAL, _broadcast_queue_status_job, "broadcast_queue_status"),
+            name="broadcast_queue_status",
         ),
     ]
     logger.info("Started %d background worker(s)", len(tasks))
