@@ -1,11 +1,11 @@
-import axios from 'axios';
+import axios from "axios";
 
-const BASE = '/api/v1';
+const BASE = "/api/v1";
 
 const http = axios.create({ baseURL: BASE });
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('tr_token');
+  const token = localStorage.getItem("tr_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -14,10 +14,13 @@ http.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('tr_token');
-      localStorage.removeItem('tr_user');
-      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-        window.location.href = '/login';
+      localStorage.removeItem("tr_token");
+      localStorage.removeItem("tr_user");
+      if (
+        !window.location.pathname.includes("/login") &&
+        !window.location.pathname.includes("/register")
+      ) {
+        window.location.href = "/login";
       }
     }
     return Promise.reject(err);
@@ -27,15 +30,21 @@ http.interceptors.response.use(
 // ── Auth ──────────────────────────────────────────────────────
 
 export async function apiRegister({ email, password, full_name, age, gender }) {
-  const { data } = await http.post('/auth/register', { email, password, full_name, age, gender });
+  const { data } = await http.post("/auth/register", {
+    email,
+    password,
+    full_name,
+    age,
+    gender,
+  });
   return data; // UserResponse
 }
 
 export async function apiLogin({ email, password }) {
   // FastAPI OAuth2PasswordRequestForm requires form-encoded body
   const body = new URLSearchParams({ username: email, password });
-  const { data } = await http.post('/auth/login', body, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  const { data } = await http.post("/auth/login", body, {
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
   return data; // Token: { access_token, token_type, user_id, role }
 }
@@ -43,7 +52,7 @@ export async function apiLogin({ email, password }) {
 // ── Events ────────────────────────────────────────────────────
 
 export async function apiListEvents({ skip = 0, limit = 20 } = {}) {
-  const { data } = await http.get('/events', { params: { skip, limit } });
+  const { data } = await http.get("/events", { params: { skip, limit } });
   return data;
 }
 
@@ -60,7 +69,7 @@ export async function apiGetSeatMatrix(sectionId) {
 }
 
 export async function apiLockSeats(seatIds) {
-  const { data } = await http.post('/seats/lock', { seat_ids: seatIds });
+  const { data } = await http.post("/seats/lock", { seat_ids: seatIds });
   return data; // [LockResponse]
 }
 
@@ -71,17 +80,19 @@ export async function apiReleaseLock(seatId) {
 // ── Orders ────────────────────────────────────────────────────
 
 export async function apiListOrders() {
-  const { data } = await http.get('/orders');
+  const { data } = await http.get("/orders");
   return data;
 }
 
 export async function apiCreateOrder(seatIds) {
-  const { data } = await http.post('/orders', { seat_ids: seatIds });
+  const { data } = await http.post("/orders", { seat_ids: seatIds });
   return data;
 }
 
-export async function apiPayOrder(orderId, paymentMethod = 'mock') {
-  const { data } = await http.post(`/orders/${orderId}/pay`, { payment_method: paymentMethod });
+export async function apiPayOrder(orderId, paymentMethod = "mock") {
+  const { data } = await http.post(`/orders/${orderId}/pay`, {
+    payment_method: paymentMethod,
+  });
   return data;
 }
 
@@ -92,7 +103,7 @@ export async function apiCancelOrder(orderId) {
 // ── Tickets ───────────────────────────────────────────────────
 
 export async function apiMyTickets() {
-  const { data } = await http.get('/tickets');
+  const { data } = await http.get("/tickets");
   return data;
 }
 
@@ -120,12 +131,12 @@ export async function apiCheckAdmission(eventId, token) {
 // ── Admin ─────────────────────────────────────────────────────
 
 export async function apiAdminListEvents({ skip = 0, limit = 50 } = {}) {
-  const { data } = await http.get('/admin/events', { params: { skip, limit } });
+  const { data } = await http.get("/admin/events", { params: { skip, limit } });
   return data;
 }
 
 export async function apiAdminCreateEvent(payload) {
-  const { data } = await http.post('/admin/events', payload);
+  const { data } = await http.post("/admin/events", payload);
   return data;
 }
 
@@ -135,7 +146,9 @@ export async function apiAdminUpdateEvent(eventId, payload) {
 }
 
 export async function apiAdminUpdateEventStatus(eventId, status) {
-  const { data } = await http.patch(`/admin/events/${eventId}/status`, { status });
+  const { data } = await http.patch(`/admin/events/${eventId}/status`, {
+    status,
+  });
   return data;
 }
 
@@ -144,17 +157,20 @@ export async function apiAdminDeleteEvent(eventId) {
 }
 
 export async function apiAdminListVenues() {
-  const { data } = await http.get('/admin/venues');
+  const { data } = await http.get("/admin/venues");
   return data;
 }
 
 export async function apiAdminCreateVenue(payload) {
-  const { data } = await http.post('/admin/venues', payload);
+  const { data } = await http.post("/admin/venues", payload);
   return data;
 }
 
 export async function apiAdminAddSection(eventId, payload) {
-  const { data } = await http.post(`/admin/events/${eventId}/sections`, payload);
+  const { data } = await http.post(
+    `/admin/events/${eventId}/sections`,
+    payload,
+  );
   return data;
 }
 

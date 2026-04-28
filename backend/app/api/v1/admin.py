@@ -64,6 +64,7 @@ def create_venue(
     db: Session = Depends(get_master_db),
     _: User = Depends(require_admin),
 ):
+    print(f"Creating venue with payload: {payload}")
     venue = Venue(**payload.model_dump())
     db.add(venue)
     db.commit()

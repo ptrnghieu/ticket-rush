@@ -19,26 +19,26 @@ A production-grade flash-sale e-ticket platform built for high concurrency. Hand
 
 **Key design decisions:**
 
-| Problem | Solution |
-|---|---|
-| Double-sell prevention | `SELECT ... FOR UPDATE` pessimistic locking per seat |
-| Deadlock prevention | Always acquire multiple locks in ascending `seat_id` order |
-| Flash-sale queue | Redis `ZSET` (sorted set) — atomic `ZPOPMIN` batch admission |
-| Read scalability | MySQL master–slave routing; all reads go to slave pool |
-| Real-time updates | Native WebSocket rooms grouped by `event_id` |
-| Background jobs | Asyncio task scheduler (lock expiry every 30 s, queue admission every 30 s) |
+| Problem                | Solution                                                                    |
+| ---------------------- | --------------------------------------------------------------------------- |
+| Double-sell prevention | `SELECT ... FOR UPDATE` pessimistic locking per seat                        |
+| Deadlock prevention    | Always acquire multiple locks in ascending `seat_id` order                  |
+| Flash-sale queue       | Redis `ZSET` (sorted set) — atomic `ZPOPMIN` batch admission                |
+| Read scalability       | MySQL master–slave routing; all reads go to slave pool                      |
+| Real-time updates      | Native WebSocket rooms grouped by `event_id`                                |
+| Background jobs        | Asyncio task scheduler (lock expiry every 30 s, queue admission every 30 s) |
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite, React Router v6, Axios |
-| Backend | FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2 |
-| Auth | JWT (python-jose) + bcrypt (passlib) |
-| Database | MySQL 8 (InnoDB) with master–slave replication |
-| Cache / Queue | Redis 7 |
-| Real-time | WebSocket (FastAPI native) |
-| QR Tickets | `qrcode` + Pillow → base64 PNG |
+| Layer         | Technology                                     |
+| ------------- | ---------------------------------------------- |
+| Frontend      | React 18, Vite, React Router v6, Axios         |
+| Backend       | FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2       |
+| Auth          | JWT (python-jose) + bcrypt (passlib)           |
+| Database      | MySQL 8 (InnoDB) with master–slave replication |
+| Cache / Queue | Redis 7                                        |
+| Real-time     | WebSocket (FastAPI native)                     |
+| QR Tickets    | `qrcode` + Pillow → base64 PNG                 |
 
 ## Features
 
@@ -57,12 +57,12 @@ A production-grade flash-sale e-ticket platform built for high concurrency. Hand
 
 ### Prerequisites
 
-| Tool | Version |
-|---|---|
-| Python | 3.11+ |
-| Node.js | 18+ |
+| Tool                    | Version            |
+| ----------------------- | ------------------ |
+| Python                  | 3.11+              |
+| Node.js                 | 18+                |
 | Docker + Docker Compose | Any recent version |
-| Git | Any |
+| Git                     | Any                |
 
 ### 1. Clone the repository
 
@@ -78,6 +78,7 @@ docker compose up -d
 ```
 
 This starts:
+
 - **MySQL 8** on `localhost:3306` (database `ticketrush`, root password `password`)
 - **Redis 7** on `localhost:6379`
 
@@ -112,15 +113,15 @@ cp .env.example .env
 
 Key variables:
 
-| Variable | Default | Description |
-|---|---|---|
-| `DB_MASTER_HOST` | `localhost` | MySQL host |
-| `DB_MASTER_PASSWORD` | `password` | MySQL root password |
-| `DB_NAME` | `ticketrush` | Database name |
-| `REDIS_HOST` | `localhost` | Redis host |
-| `SECRET_KEY` | `dev-secret-key-...` | JWT signing key — **change in production** |
-| `SEAT_LOCK_DURATION_SECONDS` | `600` | How long a seat hold lasts (seconds) |
-| `QUEUE_BATCH_SIZE` | `50` | Users admitted per queue batch |
+| Variable                     | Default              | Description                                |
+| ---------------------------- | -------------------- | ------------------------------------------ |
+| `DB_MASTER_HOST`             | `localhost`          | MySQL host                                 |
+| `DB_MASTER_PASSWORD`         | `password`           | MySQL root password                        |
+| `DB_NAME`                    | `ticketrush`         | Database name                              |
+| `REDIS_HOST`                 | `localhost`          | Redis host                                 |
+| `SECRET_KEY`                 | `dev-secret-key-...` | JWT signing key — **change in production** |
+| `SEAT_LOCK_DURATION_SECONDS` | `600`                | How long a seat hold lasts (seconds)       |
+| `QUEUE_BATCH_SIZE`           | `50`                 | Users admitted per queue batch             |
 
 ### 4. Start the backend
 
@@ -154,12 +155,13 @@ python seed.py
 
 This creates:
 
-| Account | Email | Password | Role |
-|---|---|---|---|
-| Admin | `admin@ticketrush.vn` | `Admin@123` | Admin |
-| Demo user | `user@example.com` | `User@1234` | Customer |
+| Account   | Email                 | Password    | Role     |
+| --------- | --------------------- | ----------- | -------- |
+| Admin     | `admin@ticketrush.vn` | `Admin@123` | Admin    |
+| Demo user | `user@example.com`    | `User@1234` | Customer |
 
 And three sample events with sections and seats already generated:
+
 - **Đêm Nhạc Trịnh 2026** — 265 seats across 3 sections
 - **Rock In Saigon 2026** — 184 seats across 3 sections
 - **Comedy Night Vol. 5** — 110 seats across 2 sections
@@ -245,22 +247,22 @@ ticket-rush/
 
 Full interactive docs at **http://localhost:8000/docs** (Swagger UI).
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/auth/register` | Register new account |
-| `POST` | `/api/v1/auth/login` | Login, returns JWT |
-| `GET` | `/api/v1/events` | List published/on-sale events |
-| `GET` | `/api/v1/events/{id}` | Event detail + sections |
-| `GET` | `/api/v1/seats/{section_id}` | Seat matrix for a section |
-| `POST` | `/api/v1/seats/lock` | Lock seats (10-min hold) |
-| `DELETE` | `/api/v1/seats/{id}/lock` | Release a lock |
-| `POST` | `/api/v1/orders` | Create order from locked seats |
-| `POST` | `/api/v1/orders/{id}/pay` | Pay order + issue QR tickets |
-| `GET` | `/api/v1/tickets` | My tickets |
-| `POST` | `/api/v1/queue/join/{event_id}` | Join virtual queue |
-| `GET` | `/api/v1/queue/status/{event_id}` | Queue position + wait time |
-| `WS` | `/api/v1/ws/events/{event_id}` | Real-time seat/queue events |
-| `GET` | `/api/v1/admin/dashboard/{event_id}` | Occupancy + revenue stats |
+| Method   | Path                                 | Description                    |
+| -------- | ------------------------------------ | ------------------------------ |
+| `POST`   | `/api/v1/auth/register`              | Register new account           |
+| `POST`   | `/api/v1/auth/login`                 | Login, returns JWT             |
+| `GET`    | `/api/v1/events`                     | List published/on-sale events  |
+| `GET`    | `/api/v1/events/{id}`                | Event detail + sections        |
+| `GET`    | `/api/v1/seats/{section_id}`         | Seat matrix for a section      |
+| `POST`   | `/api/v1/seats/lock`                 | Lock seats (10-min hold)       |
+| `DELETE` | `/api/v1/seats/{id}/lock`            | Release a lock                 |
+| `POST`   | `/api/v1/orders`                     | Create order from locked seats |
+| `POST`   | `/api/v1/orders/{id}/pay`            | Pay order + issue QR tickets   |
+| `GET`    | `/api/v1/tickets`                    | My tickets                     |
+| `POST`   | `/api/v1/queue/join/{event_id}`      | Join virtual queue             |
+| `GET`    | `/api/v1/queue/status/{event_id}`    | Queue position + wait time     |
+| `WS`     | `/api/v1/ws/events/{event_id}`       | Real-time seat/queue events    |
+| `GET`    | `/api/v1/admin/dashboard/{event_id}` | Occupancy + revenue stats      |
 
 ## Stopping Everything
 
