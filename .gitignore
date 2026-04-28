@@ -24,6 +24,7 @@ lib64/
 venv/
 env/
 ENV/
+backend/.venv/
 
 # pytest / coverage
 .pytest_cache/
