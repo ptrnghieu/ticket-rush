@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,12 +8,22 @@ from app.core.config import settings
 from app.core.database import master_engine
 import app.models  # noqa: F401 — registers all ORM models with Base.metadata
 
+logging.basicConfig(level=logging.INFO)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Startup ───────────────────────────────────────────────────────────────
     from app.models.base import Base
     Base.metadata.create_all(bind=master_engine)
+
+    from app.worker.scheduler import start_background_workers, stop_background_workers
+    bg_tasks = await start_background_workers()
+
     yield
+
+    # ── Shutdown ──────────────────────────────────────────────────────────────
+    stop_background_workers(bg_tasks)
     master_engine.dispose()
 
 
@@ -31,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
+# ── REST routers ──────────────────────────────────────────────────────────────
 from app.api.v1 import auth, events, seats, orders, tickets, queue, admin  # noqa: E402
 
 app.include_router(auth.router,    prefix="/api/v1/auth",    tags=["Auth"])
@@ -41,6 +52,11 @@ app.include_router(orders.router,  prefix="/api/v1/orders",  tags=["Orders"])
 app.include_router(tickets.router, prefix="/api/v1/tickets", tags=["Tickets"])
 app.include_router(queue.router,   prefix="/api/v1/queue",   tags=["Queue"])
 app.include_router(admin.router,   prefix="/api/v1/admin",   tags=["Admin"])
+
+# ── WebSocket ─────────────────────────────────────────────────────────────────
+from app.api.v1 import ws  # noqa: E402
+
+app.include_router(ws.router, prefix="/api/v1/ws", tags=["WebSocket"])
 
 
 @app.get("/health", tags=["Ops"])
