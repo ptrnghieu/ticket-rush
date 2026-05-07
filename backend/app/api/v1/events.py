@@ -17,7 +17,7 @@ router = APIRouter()
 )
 def list_events(
     skip: int = Query(0, ge=0, description="Pagination offset"),
-    limit: int = Query(20, ge=1, le=100, description="Page size"),
+    limit: int = Query(20, ge=1, le=200, description="Page size"),
     db: Session = Depends(get_slave_db),
 ):
     return EventService(db).list_published(skip=skip, limit=limit)

@@ -1,0 +1,2 @@
+POST /api/v1/orders/2/pay
+POST /api/v1/seats/lock
