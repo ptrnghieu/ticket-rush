@@ -10,7 +10,7 @@ constraint is the authoritative guard).
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -37,7 +37,7 @@ class Ticket(Base, TimestampMixin):
     order_id: Mapped[int] = mapped_column(
         ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    qr_code: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    qr_code: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     issued_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

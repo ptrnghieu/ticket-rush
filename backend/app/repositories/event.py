@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.event import Event, EventStatus
+from app.models.event import Event, EventStatus, EventType
 from app.repositories.base import BaseRepository
 
 
@@ -11,16 +11,23 @@ class EventRepository(BaseRepository[Event]):
     def __init__(self, db: Session) -> None:
         super().__init__(Event, db)
 
-    def get_published(self, skip: int = 0, limit: int = 20) -> List[Event]:
+    def get_published(
+        self,
+        skip: int = 0,
+        limit: int = 20,
+        event_type: Optional[EventType] = None,
+    ) -> List[Event]:
         """Read-only listing — safe to call with a slave session."""
         stmt = (
             select(Event)
-            .where(Event.status.in_([EventStatus.published, EventStatus.on_sale]))
+            .where(Event.status == EventStatus.on_sale)
             .order_by(Event.start_time.asc())
             .offset(skip)
             .limit(limit)
             .options(selectinload(Event.venue))
         )
+        if event_type is not None:
+            stmt = stmt.where(Event.event_type == event_type)
         return list(self.db.scalars(stmt).all())
 
     def get_with_sections(self, event_id: int) -> Optional[Event]:

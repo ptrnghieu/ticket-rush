@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_slave_db
+from app.models.event import EventType
 from app.schemas.event import EventDetailResponse, EventResponse
 from app.services.event import EventService
 
@@ -13,14 +14,15 @@ router = APIRouter()
 @router.get(
     "",
     response_model=List[EventResponse],
-    summary="List all published / on-sale events",
+    summary="List on-sale events with optional type filter",
 )
 def list_events(
     skip: int = Query(0, ge=0, description="Pagination offset"),
     limit: int = Query(20, ge=1, le=200, description="Page size"),
+    event_type: Optional[EventType] = Query(None, description="Filter by event type"),
     db: Session = Depends(get_slave_db),
 ):
-    return EventService(db).list_published(skip=skip, limit=limit)
+    return EventService(db).list_published(skip=skip, limit=limit, event_type=event_type)
 
 
 @router.get(
