@@ -51,8 +51,10 @@ export async function apiLogin({ email, password }) {
 
 // ── Events ────────────────────────────────────────────────────
 
-export async function apiListEvents({ skip = 0, limit = 20 } = {}) {
-  const { data } = await http.get("/events", { params: { skip, limit } });
+export async function apiListEvents({ skip = 0, limit = 20, event_type } = {}) {
+  const params = { skip, limit };
+  if (event_type) params.event_type = event_type;
+  const { data } = await http.get("/events", { params });
   return data;
 }
 

@@ -10,6 +10,17 @@ import {
 
 const EMPTY_SECTION = { name: "", price: "", row_count: "", col_count: "" };
 
+const EVENT_TYPES = [
+  { value: "concert", label: "Hòa nhạc" },
+  { value: "festival", label: "Lễ hội" },
+  { value: "theater", label: "Sân khấu" },
+  { value: "sports", label: "Thể thao" },
+  { value: "conference", label: "Hội thảo" },
+  { value: "cinema", label: "Điện ảnh" },
+  { value: "comedy", label: "Hài kịch" },
+  { value: "other", label: "Khác" },
+];
+
 export default function CreateEvent() {
   const navigate = useNavigate();
 
@@ -21,6 +32,7 @@ export default function CreateEvent() {
     start_time: "",
     end_time: "",
     poster_url: "",
+    event_type: "other",
   });
   const [sections, setSections] = useState([{ ...EMPTY_SECTION }]);
   const [newVenueName, setNewVenueName] = useState("");
@@ -89,6 +101,7 @@ export default function CreateEvent() {
           ? new Date(form.end_time).toISOString()
           : undefined,
         poster_url: form.poster_url || undefined,
+        event_type: form.event_type || "other",
       });
 
       // Create sections + generate seats
@@ -201,16 +214,39 @@ export default function CreateEvent() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">URL poster</label>
-              <input
-                name="poster_url"
-                type="url"
-                className="input"
-                value={form.poster_url}
-                onChange={handleFormChange}
-                placeholder="https://..."
-              />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "var(--sp-4)",
+              }}
+            >
+              <div className="form-group">
+                <label className="form-label">URL poster</label>
+                <input
+                  name="poster_url"
+                  type="url"
+                  className="input"
+                  value={form.poster_url}
+                  onChange={handleFormChange}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Loại sự kiện</label>
+                <select
+                  name="event_type"
+                  className="select"
+                  value={form.event_type}
+                  onChange={handleFormChange}
+                >
+                  {EVENT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>

@@ -2,11 +2,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { apiListEvents } from '../services/api';
 import EventCard from '../components/EventCard';
 
-const STATUS_FILTERS = [
+const TYPE_FILTERS = [
   { label: 'Tất cả', value: '' },
-  { label: 'Đang mở bán', value: 'on_sale' },
-  { label: 'Sắp diễn ra', value: 'published' },
-  { label: 'Đã kết thúc', value: 'ended' },
+  { label: 'Hòa nhạc', value: 'concert' },
+  { label: 'Lễ hội', value: 'festival' },
+  { label: 'Sân khấu', value: 'theater' },
+  { label: 'Thể thao', value: 'sports' },
+  { label: 'Hội thảo', value: 'conference' },
+  { label: 'Điện ảnh', value: 'cinema' },
+  { label: 'Hài kịch', value: 'comedy' },
+  { label: 'Khác', value: 'other' },
 ];
 
 export default function Home() {
@@ -14,22 +19,21 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
 
   useEffect(() => {
-    apiListEvents({ limit: 100 })
+    setLoading(true);
+    apiListEvents({ limit: 100, event_type: typeFilter || undefined })
       .then(setEvents)
       .catch(() => setError('Không thể tải danh sách sự kiện'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [typeFilter]);
 
   const filtered = useMemo(() => {
-    return events.filter(e => {
-      const matchSearch = !search || e.name.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = !statusFilter || e.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [events, search, statusFilter]);
+    if (!search) return events;
+    const q = search.toLowerCase();
+    return events.filter(e => e.name.toLowerCase().includes(q));
+  }, [events, search]);
 
   return (
     <>
@@ -60,11 +64,11 @@ export default function Home() {
             </div>
 
             <div className="filter-tabs">
-              {STATUS_FILTERS.map(f => (
+              {TYPE_FILTERS.map(f => (
                 <button
                   key={f.value}
-                  className={`filter-tab${statusFilter === f.value ? ' active' : ''}`}
-                  onClick={() => setStatusFilter(f.value)}
+                  className={`filter-tab${typeFilter === f.value ? ' active' : ''}`}
+                  onClick={() => setTypeFilter(f.value)}
                 >
                   {f.label}
                 </button>
@@ -77,7 +81,7 @@ export default function Home() {
 
           {!loading && !error && (
             <>
-              <span className="events-count">{filtered.length} sự kiện</span>
+              <span className="events-count">{filtered.length} sự kiện đang mở bán</span>
               {filtered.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">🎭</div>

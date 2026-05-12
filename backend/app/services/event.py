@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.event import Event, EventStatus
+from app.models.event import Event, EventStatus, EventType
 from app.models.section import Section
 from app.models.venue import Venue
 from app.repositories.event import EventRepository
@@ -17,8 +17,13 @@ class EventService:
         self.event_repo = EventRepository(db)
         self.section_repo = SectionRepository(db)
 
-    def list_published(self, skip: int = 0, limit: int = 20) -> List[Event]:
-        return self.event_repo.get_published(skip=skip, limit=limit)
+    def list_published(
+        self,
+        skip: int = 0,
+        limit: int = 20,
+        event_type: Optional[EventType] = None,
+    ) -> List[Event]:
+        return self.event_repo.get_published(skip=skip, limit=limit, event_type=event_type)
 
     def get_event_detail(self, event_id: int) -> Event:
         event = self.event_repo.get_with_sections(event_id)
@@ -40,6 +45,7 @@ class EventService:
         start_time: datetime,
         end_time: Optional[datetime] = None,
         poster_url: Optional[str] = None,
+        event_type: Optional[EventType] = EventType.other,
     ) -> Event:
         venue = self.db.get(Venue, venue_id)
         if not venue:
@@ -55,6 +61,7 @@ class EventService:
             end_time=end_time,
             status=EventStatus.draft,
             poster_url=poster_url,
+            event_type=event_type,
         )
         self.db.add(event)
         self.db.commit()

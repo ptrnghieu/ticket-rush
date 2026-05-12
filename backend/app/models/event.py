@@ -22,6 +22,17 @@ class EventStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class EventType(str, enum.Enum):
+    concert = "concert"
+    festival = "festival"
+    theater = "theater"
+    sports = "sports"
+    conference = "conference"
+    cinema = "cinema"
+    comedy = "comedy"
+    other = "other"
+
+
 class Event(Base, TimestampMixin):
     __tablename__ = "events"
 
@@ -35,6 +46,9 @@ class Event(Base, TimestampMixin):
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     status: Mapped[EventStatus] = mapped_column(
         SAEnum(EventStatus), nullable=False, default=EventStatus.draft
+    )
+    event_type: Mapped[Optional[EventType]] = mapped_column(
+        SAEnum(EventType), nullable=True, default=EventType.other
     )
     poster_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
