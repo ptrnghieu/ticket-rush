@@ -107,7 +107,7 @@ class OrderService:
 
     def process_payment(self, order_id: int, user_id: int) -> Order:
         """
-        Confirm payment and atomically finalise the order.
+        Confirm payment and atomically finalize the order.
 
         On success: Order → paid | Seats → sold | Locks → converted
         Raises PaymentDeclinedError if the gateway rejects (mock always passes).

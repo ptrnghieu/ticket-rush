@@ -1,2 +1,3 @@
 POST /api/v1/orders/2/pay
+    Failed to issue tickets: (pymysql.err.DataError) (1406, "Data too long for column 'qr_code' at row 1") [SQL: INSERT INTO tickets (seat_id, user_id, order_id, qr_code) VALUES (%(seat_id)s, %(user_id)s, %(order_id)s, %(qr_code)s)] [parameters: {'seat_id': 559, 'user_id': 2, 'order_id': 4, 'qr_code': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAcIAAAHCAQAAAABUY/ToAAADbklEQVR4nO2cTYrjQAyFn6YCWTo3yFGcmzV9pLmBfZQcYMBeBmzeLEqqKrsbBpqETmeeFsZ/H2WDUEm ... (972 characters truncated) ... i/0mOp9Xqvh98z0s6VstV23gOGfI5vlbkE5Cx/1BHAHPc7acVQPfHiPlI9BMYr1gszv9Z/ynycWSjD8Gnffi66FhLVtXGpLkfIj8x0x7nIkWKFClSpMj/nPwL9SCIFpq+KqoAAAAASUVORK5CYII='}] (Background on this error at: https://sqlalche.me/e/20/9h9h)
 POST /api/v1/seats/lock

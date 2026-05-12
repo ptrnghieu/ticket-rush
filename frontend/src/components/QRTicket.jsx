@@ -5,7 +5,7 @@ export default function QRTicket({ ticket, eventName, seatLabel }) {
     <div className="ticket-card">
       <div className="ticket-qr">
         {ticket.qr_code ? (
-          <img src={`data:image/png;base64,${ticket.qr_code}`} alt="QR vé" />
+          <img src={ticket.qr_code} alt="QR vé" />
         ) : (
           <span style={{ fontSize: '2rem' }}>🎫</span>
         )}
