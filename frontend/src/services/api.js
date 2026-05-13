@@ -51,10 +51,17 @@ export async function apiLogin({ email, password }) {
 
 // ── Events ────────────────────────────────────────────────────
 
-export async function apiListEvents({ skip = 0, limit = 20, event_type } = {}) {
+export async function apiListEvents({ skip = 0, limit = 20, event_type, date_from, date_to } = {}) {
   const params = { skip, limit };
   if (event_type) params.event_type = event_type;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
   const { data } = await http.get("/events", { params });
+  return data;
+}
+
+export async function apiTrendingEvents(limit = 6) {
+  const { data } = await http.get("/events/trending", { params: { limit } });
   return data;
 }
 
@@ -190,6 +197,24 @@ export async function apiAdminAnalytics(eventId) {
   const { data } = await http.get(`/admin/analytics/${eventId}`);
   return data;
 }
+
+// ── Favorites ─────────────────────────────────────────────────
+
+export async function apiMyFavorites() {
+  const { data } = await http.get("/favorites");
+  return data; // number[]
+}
+
+export async function apiAddFavorite(eventId) {
+  const { data } = await http.post(`/favorites/${eventId}`);
+  return data;
+}
+
+export async function apiRemoveFavorite(eventId) {
+  await http.delete(`/favorites/${eventId}`);
+}
+
+// ── Admin Queue ───────────────────────────────────────────────
 
 export async function apiAdminActivateQueue(eventId) {
   const { data } = await http.post(`/admin/events/${eventId}/queue/activate`);

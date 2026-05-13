@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.event import Event, EventStatus, EventType
+from app.models.favorite import Favorite
 from app.models.section import Section
 from app.models.venue import Venue
 from app.repositories.event import EventRepository
@@ -22,8 +23,16 @@ class EventService:
         skip: int = 0,
         limit: int = 20,
         event_type: Optional[EventType] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
     ) -> List[Event]:
-        return self.event_repo.get_published(skip=skip, limit=limit, event_type=event_type)
+        return self.event_repo.get_published(
+            skip=skip, limit=limit, event_type=event_type,
+            date_from=date_from, date_to=date_to,
+        )
+
+    def list_trending(self, limit: int = 6) -> List[Event]:
+        return self.event_repo.get_trending(limit=limit)
 
     def get_event_detail(self, event_id: int) -> Event:
         event = self.event_repo.get_with_sections(event_id)

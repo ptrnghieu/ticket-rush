@@ -46,6 +46,27 @@ with conn.cursor() as cur:
     else:
         print("  events.event_type already exists, skipping")
 
+    # 3. Create favorites table
+    cur.execute("SHOW TABLES LIKE 'favorites'")
+    if not cur.fetchone():
+        cur.execute(
+            "CREATE TABLE favorites ("
+            "  id INT AUTO_INCREMENT PRIMARY KEY,"
+            "  user_id INT NOT NULL,"
+            "  event_id INT NOT NULL,"
+            "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+            "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+            "  UNIQUE KEY uq_favorite (user_id, event_id),"
+            "  KEY ix_favorites_user (user_id),"
+            "  KEY ix_favorites_event (event_id),"
+            "  CONSTRAINT fk_fav_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,"
+            "  CONSTRAINT fk_fav_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        )
+        print("✓ favorites table created")
+    else:
+        print("  favorites table already exists, skipping")
+
 conn.commit()
 conn.close()
 print("\nMigration complete.")

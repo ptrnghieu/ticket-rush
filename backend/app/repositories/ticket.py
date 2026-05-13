@@ -3,6 +3,10 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.seat import Seat
+from app.models.section import Section
+from app.models.event import Event
+from app.models.venue import Venue
 from app.models.ticket import Ticket
 from app.repositories.base import BaseRepository
 
@@ -21,8 +25,10 @@ class TicketRepository(BaseRepository[Ticket]):
             .where(Ticket.user_id == user_id)
             .order_by(Ticket.issued_at.desc())
             .options(
-                selectinload(Ticket.seat),
-                selectinload(Ticket.order),
+                selectinload(Ticket.seat)
+                .selectinload(Seat.section)
+                .selectinload(Section.event)
+                .selectinload(Event.venue),
             )
         )
         return list(self.db.scalars(stmt).all())

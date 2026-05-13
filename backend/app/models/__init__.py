@@ -13,6 +13,7 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.ticket import Ticket
 from app.models.queue_session import QueueSession
+from app.models.favorite import Favorite
 
 __all__ = [
     "Base",
@@ -26,4 +27,5 @@ __all__ = [
     "OrderItem",
     "Ticket",
     "QueueSession",
+    "Favorite",
 ]
