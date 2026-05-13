@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { apiGetEvent, apiLockSeats, apiJoinQueue } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
+import { useFavorites } from "../hooks/useFavorites";
 import SeatMap from "../components/SeatMap";
 import QueueRoom from "../components/QueueRoom";
 import {
@@ -10,6 +11,12 @@ import {
   statusLabel,
   statusBadgeClass,
 } from "../utils/format";
+
+const TYPE_LABELS = {
+  concert: "Hòa nhạc", festival: "Lễ hội", theater: "Sân khấu",
+  sports: "Thể thao", conference: "Hội thảo", cinema: "Điện ảnh",
+  comedy: "Hài kịch", other: "Khác",
+};
 
 export default function Event() {
   const { id } = useParams();
@@ -32,13 +39,20 @@ export default function Event() {
 
   const [inQueue, setInQueue] = useState(false);
   const [joiningQueue, setJoiningQueue] = useState(false);
+  const [favCount, setFavCount] = useState(0);
+  const { favoriteIds, toggle: toggleFav } = useFavorites();
 
   useEffect(() => {
     apiGetEvent(id)
-      .then(setEvent)
+      .then(e => { setEvent(e); setFavCount(e.favorite_count ?? 0); })
       .catch(() => setError("Không thể tải thông tin sự kiện"))
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function handleFav() {
+    if (!user) { navigate("/login"); return; }
+    await toggleFav(Number(id), favCount, setFavCount);
+  }
 
   const handleSelectionChange = useCallback((sel) => setSelection(sel), []);
 
@@ -125,12 +139,39 @@ export default function Event() {
       <div className="container">
         {/* Header */}
         <div className="event-header">
-          <div style={{ marginBottom: "var(--sp-3)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: "var(--sp-3)", flexWrap: "wrap" }}>
             <span className={`badge ${statusBadgeClass(event.status)}`}>
               {statusLabel(event.status)}
             </span>
+            {event.event_type && (
+              <span className="badge badge-blue">
+                {TYPE_LABELS[event.event_type] ?? event.event_type}
+              </span>
+            )}
           </div>
-          <h1 className="event-title">{event.name}</h1>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--sp-4)" }}>
+            <h1 className="event-title" style={{ margin: 0 }}>{event.name}</h1>
+            <button
+              onClick={handleFav}
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                padding: "var(--sp-2) var(--sp-3)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--sp-1)",
+                fontSize: "var(--text-sm)",
+                color: favoriteIds.has(Number(id)) ? "#f87171" : "var(--text-2)",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                transition: "color var(--t)",
+              }}
+            >
+              {favoriteIds.has(Number(id)) ? "♥" : "♡"} {favCount}
+            </button>
+          </div>
           <div className="event-meta-grid">
             <div className="event-meta-item">
               <div>

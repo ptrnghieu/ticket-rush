@@ -53,6 +53,7 @@ class EventResponse(BaseModel):
     poster_url: Optional[str]
     venue: VenueResponse
     created_at: datetime
+    favorite_count: int = 0
 
 
 class EventDetailResponse(EventResponse):

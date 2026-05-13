@@ -1,21 +1,15 @@
 import { useState, useEffect } from 'react';
-import { apiMyTickets, apiListEvents } from '../services/api';
+import { apiMyTickets } from '../services/api';
 import QRTicket from '../components/QRTicket';
 
 export default function MyTickets() {
   const [tickets, setTickets] = useState([]);
-  const [eventMap, setEventMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([apiMyTickets(), apiListEvents({ limit: 200 })])
-      .then(([t, events]) => {
-        setTickets(t);
-        const map = {};
-        events.forEach(e => { map[e.id] = e; });
-        setEventMap(map);
-      })
+    apiMyTickets()
+      .then(setTickets)
       .catch(() => setError('Không thể tải danh sách vé'))
       .finally(() => setLoading(false));
   }, []);
@@ -38,19 +32,9 @@ export default function MyTickets() {
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && tickets.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', paddingBottom: 'var(--sp-16)' }}>
-          {tickets.map(ticket => {
-            // Try to find event name via order → not directly available, show generic
-            return (
-              <QRTicket
-                key={ticket.id}
-                ticket={ticket}
-                eventName={`Vé #${ticket.id}`}
-                seatLabel={`Ghế ${ticket.seat_id}`}
-              />
-            );
-          })}
+          {tickets.map(ticket => <QRTicket key={ticket.id} ticket={ticket} />)}
         </div>
       )}
     </div>

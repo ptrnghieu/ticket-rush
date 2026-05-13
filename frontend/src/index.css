@@ -366,6 +366,29 @@ select {
   font-size: var(--text-lg);
   max-width: 520px;
   margin-inline: auto;
+  margin-bottom: var(--sp-6);
+}
+.hero-search {
+  position: relative;
+  max-width: 540px;
+  margin: 0 auto;
+}
+.hero-search .search-icon {
+  position: absolute;
+  left: var(--sp-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  pointer-events: none;
+  display: flex;
+}
+.hero-search .input {
+  width: 100%;
+  padding-left: calc(var(--sp-4) + 18px + var(--sp-2));
+  height: 52px;
+  font-size: var(--text-base);
+  background: var(--bg-card);
+  border-color: var(--border);
 }
 
 /* ── Events grid ─────────────────────────────────────────────── */
@@ -497,6 +520,30 @@ select {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--accent);
+}
+.fav-btn {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  background: rgba(0,0,0,.55);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color var(--t), background var(--t);
+  line-height: 1;
+}
+.fav-btn:hover { background: rgba(0,0,0,.75); color: #f87171; }
+.fav-btn--active { color: #f87171; }
+.fav-count {
+  font-size: var(--text-xs);
+  color: var(--text-3);
 }
 
 /* ── Seat Map ────────────────────────────────────────────────── */
@@ -678,6 +725,21 @@ select {
   font-size: var(--text-sm);
   color: var(--text-2);
   margin-top: var(--sp-2);
+}
+.ticket-detail-chip {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  min-width: 70px;
+}
+.ticket-detail-label {
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 2px;
 }
 
 /* ── Queue room ──────────────────────────────────────────────── */
