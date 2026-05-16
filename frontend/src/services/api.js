@@ -205,6 +205,11 @@ export async function apiMyFavorites() {
   return data; // number[]
 }
 
+export async function apiFavoriteEvents() {
+  const { data } = await http.get("/favorites/events");
+  return data; // EventDetailResponse[]
+}
+
 export async function apiAddFavorite(eventId) {
   const { data } = await http.post(`/favorites/${eventId}`);
   return data;
