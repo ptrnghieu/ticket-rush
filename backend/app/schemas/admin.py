@@ -10,6 +10,7 @@ class DashboardResponse(BaseModel):
     available_seats: int
     occupancy_rate: float   # percentage: sold / total * 100
     total_revenue: float
+    favorite_count: int = 0
 
 
 class AudienceAnalyticsResponse(BaseModel):

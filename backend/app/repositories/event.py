@@ -80,7 +80,10 @@ class EventRepository(BaseRepository[Event]):
                 selectinload(Event.sections),
             )
         )
-        return self.db.scalars(stmt).first()
+        event = self.db.scalars(stmt).first()
+        if event:
+            self._attach_favorite_counts([event])
+        return event
 
     def get_all_admin(self, skip: int = 0, limit: int = 50) -> List[Event]:
         stmt = (

@@ -123,6 +123,10 @@ export default function Dashboard() {
               <p className="stat-label">Còn trống</p>
               <p className="stat-value">{dashboard.available_seats}</p>
             </div>
+            <div className="stat-card">
+              <p className="stat-label">Lượt yêu thích</p>
+              <p className="stat-value" style={{ color: '#f87171' }}>♥ {dashboard.favorite_count ?? 0}</p>
+            </div>
           </div>
 
           {/* Occupancy bar */}

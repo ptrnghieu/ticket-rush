@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_master_db, get_slave_db
+from app.models.favorite import Favorite
 from app.models.order import Order, OrderStatus
 from app.models.order_item import OrderItem
 from app.models.seat import Seat
@@ -233,6 +234,10 @@ def event_dashboard(
     )
     total_revenue = float(db.scalar(revenue_stmt) or 0)
 
+    fav_count = int(db.scalar(
+        select(func.count()).select_from(Favorite).where(Favorite.event_id == event_id)
+    ) or 0)
+
     total = occupancy["total"] or 1
     return DashboardResponse(
         event_id=event_id,
@@ -243,6 +248,7 @@ def event_dashboard(
         available_seats=occupancy["available"],
         occupancy_rate=round(occupancy["sold"] / total * 100, 2),
         total_revenue=total_revenue,
+        favorite_count=fav_count,
     )
 
 

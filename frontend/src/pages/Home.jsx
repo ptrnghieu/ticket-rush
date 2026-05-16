@@ -28,6 +28,17 @@ const DATE_FILTERS = [
   { label: 'Tháng này', value: 'month' },
 ];
 
+const TYPE_ICONS = {
+  concert: '🎵', festival: '🎪', theater: '🎭', sports: '⚽',
+  conference: '💼', cinema: '🎬', comedy: '😂', other: '✨',
+};
+
+const RANK_BADGES = [
+  { bg: 'linear-gradient(135deg,#f59e0b,#ef4444)', label: '🥇' },
+  { bg: 'linear-gradient(135deg,#94a3b8,#64748b)', label: '🥈' },
+  { bg: 'linear-gradient(135deg,#cd7c2f,#92400e)', label: '🥉' },
+];
+
 function getDateRange(value) {
   const now = new Date();
   if (value === 'today') {
@@ -45,6 +56,22 @@ function getDateRange(value) {
   return {};
 }
 
+function getThisWeekendRange() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,6=Sat
+  const daysToSat = day === 6 ? 0 : (6 - day);
+  const sat = new Date(now); sat.setDate(now.getDate() + daysToSat); sat.setHours(0, 0, 0, 0);
+  const sun = new Date(sat); sun.setDate(sat.getDate() + 1); sun.setHours(23, 59, 59, 999);
+  return { from: sat, to: sun };
+}
+
+function getEndOfMonthRange() {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const startFrom = new Date(lastDay); startFrom.setDate(lastDay.getDate() - 6); startFrom.setHours(0, 0, 0, 0);
+  return { from: startFrom, to: lastDay };
+}
+
 export default function Home() {
   const [events, setEvents] = useState([]);
   const [trending, setTrending] = useState([]);
@@ -53,15 +80,13 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  const [priceFilter, setPriceFilter] = useState(0); // index into PRICE_FILTERS
+  const [priceFilter, setPriceFilter] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch trending once
   useEffect(() => {
     apiTrendingEvents(6).then(setTrending).catch(() => {});
   }, []);
 
-  // Fetch events when type or date changes (backend filters)
   useEffect(() => {
     setLoading(true);
     const dateRange = getDateRange(dateFilter);
@@ -71,12 +96,11 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, [typeFilter, dateFilter]);
 
-  // Price filter is client-side (needs section prices)
   const filtered = useMemo(() => {
     let result = events;
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(e => e.name.toLowerCase().includes(q));
+      result = result.filter(e => e.name.toLowerCase().includes(q) || e.venue?.name?.toLowerCase().includes(q));
     }
     const { min, max } = PRICE_FILTERS[priceFilter];
     if (min > 0 || max < Infinity) {
@@ -91,9 +115,32 @@ export default function Home() {
 
   const hasActiveFilter = typeFilter || dateFilter || priceFilter > 0;
 
+  // Derived suggestion lists (only shown when no filters active)
+  const { weekendEvents, endMonthEvents, byType } = useMemo(() => {
+    if (hasActiveFilter || search) return { weekendEvents: [], endMonthEvents: [], byType: {} };
+    const { from: wFrom, to: wTo } = getThisWeekendRange();
+    const { from: mFrom, to: mTo } = getEndOfMonthRange();
+    const weekendEvents = events.filter(e => {
+      const d = new Date(e.start_time);
+      return d >= wFrom && d <= wTo;
+    }).slice(0, 4);
+    const endMonthEvents = events.filter(e => {
+      const d = new Date(e.start_time);
+      return d >= mFrom && d <= mTo;
+    }).slice(0, 4);
+    // Pick top 4 events per type that aren't already in trending
+    const trendingIds = new Set(trending.map(t => t.id));
+    const byType = {};
+    for (const tf of TYPE_FILTERS.slice(1)) {
+      const items = events.filter(e => e.event_type === tf.value && !trendingIds.has(e.id)).slice(0, 4);
+      if (items.length >= 2) byType[tf.value] = { label: tf.label, icon: TYPE_ICONS[tf.value], items };
+    }
+    return { weekendEvents, endMonthEvents, byType };
+  }, [events, trending, hasActiveFilter, search]);
+
   return (
     <>
-      {/* Hero with embedded search */}
+      {/* Hero */}
       <section className="hero">
         <div className="container hero-content">
           <p className="hero-eyebrow">🎫 TicketRush</p>
@@ -114,37 +161,107 @@ export default function Home() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
+
+          {/* Quick time chips */}
+          {!search && (
+            <div className="hero-chips">
+              <button className={`hero-chip${dateFilter === 'today' ? ' active' : ''}`} onClick={() => { setDateFilter(d => d === 'today' ? '' : 'today'); setShowFilters(false); }}>
+                📅 Hôm nay
+              </button>
+              <button className={`hero-chip${dateFilter === 'week' ? ' active' : ''}`} onClick={() => { setDateFilter(d => d === 'week' ? '' : 'week'); setShowFilters(false); }}>
+                📆 Tuần này
+              </button>
+              <button className={`hero-chip hero-chip--fire`} onClick={() => { setDateFilter(d => d === 'month' ? '' : 'month'); setShowFilters(false); }}>
+                🔥 Cuối tháng
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
       <main className="events-section">
         <div className="container">
 
-          {/* Trending section */}
+          {/* Trending */}
           {trending.length > 0 && !search && !hasActiveFilter && (
-            <section style={{ marginBottom: 'var(--sp-10)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', marginBottom: 'var(--sp-4)' }}>
+            <section className="home-section">
+              <div className="section-heading">
                 <span style={{ fontSize: '1.2rem' }}>🔥</span>
-                <h2 style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>Sự kiện xu hướng</h2>
+                <h2 className="section-title">Sự kiện xu hướng</h2>
               </div>
-              <div className="events-grid">
-                {trending.map(event => <EventCard key={event.id} event={event} />)}
+              <div className="events-grid trending-grid">
+                {trending.map((event, idx) => (
+                  <div key={event.id} className="trending-item">
+                    {idx < 3 && (
+                      <div className="rank-badge" style={{ background: RANK_BADGES[idx].bg }}>
+                        {RANK_BADGES[idx].label} #{idx + 1}
+                      </div>
+                    )}
+                    <EventCard event={event} />
+                  </div>
+                ))}
               </div>
             </section>
           )}
 
+          {/* This weekend */}
+          {weekendEvents.length > 0 && (
+            <section className="home-section">
+              <div className="section-heading">
+                <span style={{ fontSize: '1.2rem' }}>🎉</span>
+                <h2 className="section-title">Cuối tuần này</h2>
+                <span className="section-badge">Đừng bỏ lỡ!</span>
+              </div>
+              <div className="events-grid">
+                {weekendEvents.map(event => <EventCard key={event.id} event={event} />)}
+              </div>
+            </section>
+          )}
+
+          {/* End of month */}
+          {endMonthEvents.length > 0 && (
+            <section className="home-section">
+              <div className="section-heading">
+                <span style={{ fontSize: '1.2rem' }}>🔥</span>
+                <h2 className="section-title">Cuối tháng này</h2>
+                <span className="section-badge section-badge--fire">Đang hot!</span>
+              </div>
+              <div className="events-grid">
+                {endMonthEvents.map(event => <EventCard key={event.id} event={event} />)}
+              </div>
+            </section>
+          )}
+
+          {/* By category suggestions */}
+          {!search && !hasActiveFilter && Object.entries(byType).map(([type, { label, icon, items }]) => (
+            <section key={type} className="home-section">
+              <div className="section-heading">
+                <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+                <h2 className="section-title">{label}</h2>
+                <button
+                  className="section-more"
+                  onClick={() => { setTypeFilter(type); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                  Xem tất cả →
+                </button>
+              </div>
+              <div className="events-grid">
+                {items.map(event => <EventCard key={event.id} event={event} />)}
+              </div>
+            </section>
+          ))}
+
           {/* Filter bar */}
           <div style={{ marginBottom: 'var(--sp-4)' }}>
-            {/* Type tabs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-              <div className="filter-tabs">
+              <div className="filter-tabs" style={{ flexWrap: 'wrap' }}>
                 {TYPE_FILTERS.map(f => (
                   <button
                     key={f.value}
                     className={`filter-tab${typeFilter === f.value ? ' active' : ''}`}
                     onClick={() => setTypeFilter(f.value)}
                   >
-                    {f.label}
+                    {f.value && TYPE_ICONS[f.value] ? `${TYPE_ICONS[f.value]} ` : ''}{f.label}
                   </button>
                 ))}
               </div>
@@ -157,7 +274,6 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Advanced filter panel */}
             {showFilters && (
               <div className="card" style={{ marginTop: 'var(--sp-3)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-4)' }}>
                 <div>

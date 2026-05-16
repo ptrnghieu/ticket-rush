@@ -29,9 +29,14 @@ export default function Navbar() {
                   Dashboard
                 </NavLink>
               ) : (
-                <NavLink to="/my-tickets" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-                  Vé của tôi
-                </NavLink>
+                <>
+                  <NavLink to="/favorites" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
+                    ♥ Yêu thích
+                  </NavLink>
+                  <NavLink to="/my-tickets" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
+                    Vé của tôi
+                  </NavLink>
+                </>
               )}
               <div className="nav-divider" />
               <span className="nav-user">{user.email}</span>
